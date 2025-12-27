@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Medication Reminder (Elderly-friendly)</title>
+  <style>
+    :root{--bg:#f6f9ff;--card:#ffffff;--accent:#0b63d9;--danger:#d9534f}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; background:var(--bg);color:#111}
+    .wrap{max-width:900px;margin:2rem auto;padding:1rem}
+    header{display:flex;align-items:center;gap:1rem}
+    h1{font-size:1.5rem;margin:0}
+    .card{background:var(--card);border-radius:12px;padding:1rem;box-shadow:0 6px 18px rgba(10,20,40,0.06);margin-top:1rem}
+    label{display:block;margin-bottom:.25rem;font-weight:600}
+    input[type=text], input[type=time], select{width:100%;padding:.6rem;border-radius:8px;border:1px solid #d7e2f5;font-size:1rem}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+    .big{font-size:1.15rem;padding:.75rem}
+    button{background:var(--accent);color:#fff;border:none;padding:.6rem 1rem;border-radius:8px;font-weight:700;cursor:pointer}
+    button.secondary{background:#6c757d}
+    table{width:100%;border-collapse:collapse;margin-top:1rem}
+    th,td{padding:.6rem;border-bottom:1px solid #eef3ff;text-align:left}
+    th{font-size:.95rem}
+    .controls{display:flex;gap:.5rem;flex-wrap:wrap}
+    .big-btn{font-size:1.05rem;padding:.8rem 1rem}
+    .status{margin-top:.5rem;font-size:.95rem}
+    .notice{background:#fff3cd;padding:.6rem;border-radius:8px;margin-top:1rem}
+    .access{font-size:0.95rem;color:#444}
+    .danger{background:var(--danger);padding:.4rem .6rem;border-radius:6px;color:#fff}
+    @media (max-width:600px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Medication Reminder — Sound & Timetable</h1>
+    </header>
+
+    <div class="card" id="controls">
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+        <div>
+          <label for="now">Current time</label>
+          <div id="now" class="big">--:--:--</div>
+        </div>
+        <div>
+          <label>Notifications</label>
+          <div class="controls">
+            <button id="requestPerm">Allow Notifications</button>
+            <button id="testSound" class="secondary">Play Test Sound</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice">
+        <strong>How to use</strong>: Add a medicine name and select a time. Choose days (All = everyday). Click <em>Add</em>. Allow browser notifications and volume. The page must be open in a tab for sounds to play. Use <em>Upload sound</em> to set a custom reminder tone (optional).
+      </div>
+    </div>
+
+    <div class="card" aria-live="polite">
+      <h2 style="margin-top:0">Add / Edit Medicine</h2>
+      <form id="form">
+        <div class="row">
+          <div>
+            <label for="name">Medicine name</label>
+            <input id="name" class="big" type="text" required placeholder="e.g. Paracetamol 500mg" />
+          </div>
+          <div>
+            <label for="time">Time</label>
+            <input id="time" class="big" type="time" required />
+          </div>
+        </div>
+
+        <div style="margin-top:.75rem">
+          <label for="days">Days</label>
+          <select id="days" class="big">
+            <option value="every">Everyday</option>
+            <option value="mon,tue,wed,thu,fri">Weekdays (Mon–Fri)</option>
+            <option value="sat,sun">Weekends</option>
+            <option value="custom">Custom (pick below)</option>
+          </select>
+        </div>
+
+        <div id="customDays" style="display:none;margin-top:.5rem">
+          <label>Pick days</label>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <label><input type="checkbox" value="sun"/> Sun</label>
+            <label><input type="checkbox" value="mon"/> Mon</label>
+            <label><input type="checkbox" value="tue"/> Tue</label>
+            <label><input type="checkbox" value="wed"/> Wed</label>
+            <label><input type="checkbox" value="thu"/> Thu</label>
+            <label><input type="checkbox" value="fri"/> Fri</label>
+            <label><input type="checkbox" value="sat"/> Sat</label>
+          </div>
+        </div>
+
+        <div style="margin-top:.75rem">
+          <label for="soundOption">Sound</label>
+          <select id="soundOption" class="big">
+            <option value="beep">Default beep (generated)</option>
+            <option value="upload">Upload sound (small file)</option>
+            <option value="url">Use sound URL</option>
+          </select>
+        </div>
+
+        <div id="uploadRow" style="display:none;margin-top:.5rem">
+          <label for="soundFile">Upload sound file (mp3, wav)</label>
+          <input id="soundFile" type="file" accept="audio/*" />
+        </div>
+
+        <div id="urlRow" style="display:none;margin-top:.5rem">
+          <label for="soundURL">Sound URL</label>
+          <input id="soundURL" type="text" placeholder="https://example.com/alert.mp3" />
+        </div>
+
+        <div style="margin-top:.75rem" class="row">
+          <div>
+            <label for="volume">Volume (0-100)</label>
+            <input id="volume" type="range" min="0" max="100" value="80" />
+          </div>
+          <div>
+            <label for="snooze">Default snooze (minutes)</label>
+            <input id="snooze" type="number" min="0" max="60" value="5" class="big" />
+          </div>
+        </div>
+
+        <div style="margin-top:.75rem" class="controls">
+          <button type="submit" class="big-btn">Add</button>
+          <button type="button" id="clearAll" class="big-btn secondary">Clear All</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Scheduled Medicines</h2>
+      <div id="listArea">
+        <table aria-describedby="listArea">
+          <thead>
+            <tr><th>Medicine</th><th>Time</th><th>Days</th><th>Sound</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Active Alarm</h2>
+      <div id="active" class="status">No alarm right now.</div>
+      <div style="margin-top:.5rem" class="controls">
+        <button id="snoozeBtn" class="secondary">Snooze</button>
+        <button id="stopBtn" class="danger">Stop Alarm</button>
+      </div>
+    </div>
+
+    <footer style="margin-top:1rem;color:#666;font-size:.9rem" class="access">
+      Tips: Keep phone volume up and place near the person. Browser tab must be open or in background (some browsers stop timers when fully closed). For Android, use Chrome and allow notifications. This tool stores data only in your browser.
+    </footer>
+  </div>
+
+  <script>
+    // Utility functions
+    const $ = id => document.getElementById(id);
+    const nowEl = $('now');
+    let meds = [];
+    const STORAGE_KEY = 'meds_v1';
+    let playing = null; // current playing Audio or oscillator
+    let lastMinuteKey = null; // to prevent multiple triggers in same minute
+
+    // Initialize UI state
+    function load() {
+      try { meds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e){ meds = []; }
+      renderList();
+    }
+
+    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(meds)); renderList(); }
+
+    function formatDays(d){
+      if(!d) return '';
+      if(d === 'every') return 'Everyday';
+      if(d === 'mon,tue,wed,thu,fri') return 'Mon–Fri';
+      if(d === 'sat,sun') return 'Sat, Sun';
+      if(Array.isArray(d)) return d.map(x=>x[0].toUpperCase()+x.slice(1)).join(', ');
+      return d;
+    }
+
+    function renderList(){
+      const tbody = $('tbody'); tbody.innerHTML='';
+      meds.forEach((m, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-weight:700">${escapeHtml(m.name)}</td>
+                        <td>${m.time}</td>
+                        <td>${formatDays(m.days)}</td>
+                        <td>${m.soundType === 'upload' ? 'Uploaded' : (m.soundType==='url'? 'URL' : 'Default')}</td>
+                        <td><button data-idx="${idx}" class="edit">Edit</button>
+                            <button data-idx="${idx}" class="del">Delete</button></td>`;
+        tbody.appendChild(tr);
+      });
+      // attach handlers
+      tbody.querySelectorAll('.del').forEach(b=>b.addEventListener('click', e=>{
+        const i = +e.currentTarget.dataset.idx; meds.splice(i,1); save();
+      }));
+      tbody.querySelectorAll('.edit').forEach(b=>b.addEventListener('click', e=>{
+        const i = +e.currentTarget.dataset.idx; populateEdit(i);
+      }));
+    }
+
+    function populateEdit(i){
+      const m = meds[i]; $('name').value = m.name; $('time').value = m.time; $('volume').value = m.volume||80; $('snooze').value = m.snooze||5;
+      if(Array.isArray(m.days)){
+        $('days').value = 'custom'; showCustom(true);
+        document.querySelectorAll('#customDays input').forEach(cb=>cb.checked = m.days.includes(cb.value));
+      } else {
+        $('days').value = m.days; showCustom(false);
+      }
+      $('soundOption').value = m.soundType || 'beep';
+      if(m.soundType === 'url') $('soundURL').value = m.soundUrl || '';
+      if(m.soundType === 'upload') { /* no direct mapping to file input for security */ }
+      // delete original and let user re-add
+      meds.splice(i,1); save();
+    }
+
+    function showCustom(show){ $('customDays').style.display = show ? 'block' : 'none'; }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      load();
+      // UI wiring
+      $('days').addEventListener('change', e=>{
+        showCustom(e.target.value === 'custom');
+      });
+      $('soundOption').addEventListener('change', e=>{
+        const v = e.target.value;
+        $('uploadRow').style.display = v==='upload' ? 'block' : 'none';
+        $('urlRow').style.display = v==='url' ? 'block' : 'none';
+      });
+
+      $('form').addEventListener('submit', e=>{
+        e.preventDefault();
+        const name = $('name').value.trim();
+        const time = $('time').value; if(!time) return alert('Please pick a time');
+        let days = $('days').value;
+        if(days === 'custom'){
+          const picks = Array.from(document.querySelectorAll('#customDays input:checked')).map(i=>i.value);
+          if(picks.length===0) return alert('Pick at least one day');
+          days = picks;
+        }
+        const soundType = $('soundOption').value;
+        let soundUrl = '';
+        if(soundType === 'url') soundUrl = $('soundURL').value.trim();
+        if(soundType === 'upload') {
+          const f = $('soundFile').files[0];
+          if(f){
+            const reader = new FileReader();
+            reader.onload = ev => { // store base64 (small files only)
+              const entry = {name,time,days,soundType, soundUrl:ev.target.result, volume: +$('volume').value, snooze: +$('snooze').value };
+              meds.push(entry); save(); $('form').reset(); showCustom(false);
+            };
+            reader.readAsDataURL(f);
+            return;
+          } else {
+            alert('Please upload a sound file or choose another option'); return;
+          }
+        }
+        const entry = {name,time,days,soundType,soundUrl,volume:+$('volume').value,snooze:+$('snooze').value};
+        meds.push(entry); save(); $('form').reset(); showCustom(false);
+      });
+
+      $('clearAll').addEventListener('click', ()=>{ if(confirm('Clear all medicines?')){ meds=[]; save(); } });
+
+      $('requestPerm').addEventListener('click', async ()=>{
+        if('Notification' in window){
+          const p = await Notification.requestPermission(); alert('Notification permission: '+p);
+        } else alert('Notifications not supported in this browser');
+      });
+
+      $('testSound').addEventListener('click', ()=>{ playAlert({soundType:'beep',volume: +$('volume').value}); });
+
+      $('snoozeBtn').addEventListener('click', ()=>{ if(activeAlarm) snoozeActive(); });
+      $('stopBtn').addEventListener('click', ()=>{ stopAlarm(); });
+
+      // Tick
+      setInterval(tick, 1000);
+    });
+
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
+    // Alarm handling
+    let activeAlarm = null; // {entry, startedAt}
+    let alarmTimeout = null;
+
+    function tick(){
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      nowEl.textContent = `${hh}:${mm}:${ss}`;
+
+      const minuteKey = `${hh}:${mm}`;
+      // reset played set when minute changes
+      if(minuteKey !== lastMinuteKey){ lastMinuteKey = minuteKey; }
+
+      // check meds for matches
+      meds.forEach(entry => {
+        if(entry.time === `${hh}:${mm}`){
+          // check days
+          if(entry.days === 'every' || entry.days === 'mon,tue,wed,thu,fri' || entry.days === 'sat,sun'){
+            if(entry.days === 'mon,tue,wed,thu,fri'){
+              if(d.getDay()===0 || d.getDay()===6) return; // skip weekends
+            }
+            if(entry.days === 'sat,sun'){
+              if(d.getDay()>0 && d.getDay()<6) return; // skip weekdays
+            }
+          } else if(Array.isArray(entry.days)){
+            const map = ['sun','mon','tue','wed','thu','fri','sat'];
+            if(!entry.days.includes(map[d.getDay()])) return;
+          }
+
+          // avoid retriggering within same minute — we rely on minuteKey
+          if(entry._playedAt === minuteKey) return;
+          entry._playedAt = minuteKey;
+
+          // trigger alarm
+          triggerAlarm(entry);
+        }
+      });
+    }
+
+    function triggerAlarm(entry){
+      activeAlarm = {entry, startedAt: Date.now()};
+      $('active').textContent = `Alarm: ${entry.name} — ${entry.time}`;
+      // show notification
+      try {
+        if('Notification' in window && Notification.permission === 'granted'){
+          const n = new Notification('Medicine reminder', {body: `${entry.name} — ${entry.time}`, tag: 'med-rem'});
+          n.onclick = ()=> window.focus();
+        }
+      } catch(e){ console.warn(e); }
+
+      // play sound repeatedly until stopped or snoozed
+      playAlert(entry);
+    }
+
+    function playAlert(entry){
+      stopAlarm(); // stop any existing
+      const vol = (entry.volume ?? +$('volume').value ?? 80)/100;
+      if(entry.soundType === 'url' && entry.soundUrl){
+        const a = new Audio(entry.soundUrl);
+        a.loop = true; a.volume = vol; a.play().catch(()=>{ console.warn('Audio play failed'); generateToneLoop(vol); });
+        playing = a;
+      } else if(entry.soundType === 'upload' && entry.soundUrl){
+        const a = new Audio(entry.soundUrl);
+        a.loop = true; a.volume = vol; a.play().catch(()=>{ generateToneLoop(vol); });
+        playing = a;
+      } else {
+        // default: generated tone loop using WebAudio
+        generateToneLoop(vol);
+      }
+    }
+
+    // Generate a pleasant repeating tone using WebAudio
+    let audioCtx, oscillatorNode, gainNode, toneInterval;
+    function generateToneLoop(volume){
+      try {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain(); gainNode.gain.value = volume;
+        gainNode.connect(audioCtx.destination);
+        oscillatorNode = audioCtx.createOscillator();
+        oscillatorNode.type = 'sine'; oscillatorNode.frequency.value = 880; // A5
+        oscillatorNode.connect(gainNode);
+        oscillatorNode.start();
+        // create pulsing effect by connecting/disconnecting
+        toneInterval = setInterval(()=>{
+          gainNode.gain.linearRampToValueAtTime(volume, audioCtx.currentTime);
+          setTimeout(()=>{ gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.8); }, 700);
+        }, 1000);
+        playing = {type:'osc'};
+      } catch(e){ console.warn('Audio API error', e); }
+    }
+
+    function stopAlarm(){
+      if(playing){
+        try{
+          if(playing instanceof HTMLAudioElement){ playing.pause(); playing.currentTime = 0; }
+        }catch(e){}
+        if(oscillatorNode){ try{ oscillatorNode.stop(); }catch(e){} }
+        if(toneInterval) clearInterval(toneInterval);
+        playing = null; audioCtx = null; oscillatorNode = null; gainNode = null; toneInterval = null;
+      }
+      activeAlarm = null; $('active').textContent = 'No alarm right now.';
+    }
+
+    function snoozeActive(){
+      if(!activeAlarm) return;
+      const s = activeAlarm.entry.snooze ?? +$('snooze').value ?? 5;
+      stopAlarm();
+      const d = new Date(Date.now() + s*60000);
+      const hh = String(d.getHours()).padStart(2,'0'); const mm = String(d.getMinutes()).padStart(2,'0');
+      const snoozeEntry = {name: activeAlarm.entry.name + ' (SNOOZE)', time: `${hh}:${mm}`, days:'every', soundType: activeAlarm.entry.soundType, soundUrl: activeAlarm.entry.soundUrl, volume: activeAlarm.entry.volume, snooze: activeAlarm.entry.snooze};
+      meds.push(snoozeEntry); save();
+      alert('Snoozed for '+s+' minutes.');
+    }
+
+    // small helper: listen for storage events to update across tabs
+    window.addEventListener('storage', e=>{ if(e.key === STORAGE_KEY) load(); });
+
+    // load stored on start
+    load();
+  </script>
+</body>
+</html>
